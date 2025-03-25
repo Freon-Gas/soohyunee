@@ -1,4 +1,4 @@
-![header](https://capsule-render.vercel.app/api?type=waving&color=e9ff70&height=300&section=header&text=soohyunee&fontSize=60&fontColor=000000&animation=fadeIn&fontAlignY=38&desc=&descAlignY=55&descAlign=70)
+![header](https://capsule-render.vercel.app/api?type=waving&color=ffaa85&height=300&section=header&text=soohyunee&fontSize=60&fontColor=000000&animation=fadeIn&fontAlignY=38&desc=&descAlignY=55&descAlign=70)
 
 ## :busts_in_silhouette: Members
 
