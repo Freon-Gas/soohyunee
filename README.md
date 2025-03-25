@@ -6,6 +6,9 @@
 |---|---|---|
 
 
-##소개
+## :round_pushpin: **Introduction**
 응용정보캡스톤디자인 수업을 위한 프로젝트입니다.
 수어번역이 주요기능이며, 
+
+
+## :key: **Key Features**
