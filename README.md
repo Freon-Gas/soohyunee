@@ -3,6 +3,7 @@
 ## :busts_in_silhouette: Members
 
 | 권수현 | 이나경 | 이정현 |
+|---|---|---|
 
 
 ##소개
