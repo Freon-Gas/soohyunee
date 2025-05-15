@@ -1,37 +1,134 @@
-.model-container {
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-.model-container canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.model-loading {
+.checkbox-container {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 10px;
+  border-radius: 5px;
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+  font-size: 14px;
+}
+
+.checkbox-container label {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}/* Debug Controls Styling */
+.debug-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   background-color: rgba(0, 0, 0, 0.7);
   color: white;
+  padding: 10px;
+  border-radius: 5px;
+  max-width: 300px;
+  max-height: 80vh;
+  overflow-y: auto;
   z-index: 10;
 }
 
-.loading-message {
-  padding: 15px 25px;
-  background-color: rgba(0, 0, 0, 0.5);
-  border-radius: 8px;
-  font-size: 1rem;
+.debug-controls h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+  text-align: center;
 }
 
-.model-error {
+.debug-controls .debug-button {
+  background-color: #333;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  margin: 3px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.debug-controls .debug-button:hover {
+  background-color: #555;
+}
+
+.debug-controls .debug-button.active {
+  background-color: #4285f4;
+}
+
+.debug-controls .animation-controls {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.debug-controls .animation-controls > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.debug-controls .pose-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 5px 0 10px 0;
+}
+
+.debug-controls label {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+}
+
+.debug-controls input[type="checkbox"] {
+  margin-right: 5px;
+}
+
+.debug-controls .debug-info {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+}
+
+.debug-controls .debug-info h4 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+}
+
+.debug-controls .debug-info div {
+  margin-bottom: 3px;
+}
+
+.debug-controls .error {
+  color: #ff6b6b;
+  font-weight: bold;
+}.sign-model-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+}
+
+.sign-model {
+  width: 100%;
+  height: 500px;
+  position: relative;
+  background-color: #1a1a2e;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Loading and Error Overlays */
+.loading-overlay,
+.error-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -39,17 +136,40 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
-  background-color: rgba(220, 53, 69, 0.8);
-  color: white;
+  align-items: center;
+  background-color: rgba(26, 26, 46, 0.8);
   z-index: 10;
 }
 
+.loading-spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 4px solid #ffffff;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-message,
 .error-message {
+  margin-top: 15px;
+  color: #ffffff;
+  font-size: 16px;
+  text-align: center;
+  max-width: 80%;
   padding: 15px 25px;
-  margin-bottom: 15px;
-  font-size: 1rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+}
+
+.error-message {
+  background-color: rgba(220, 53, 69, 0.8);
 }
 
 .retry-button {
@@ -60,6 +180,86 @@
   border-radius: 4px;
   cursor: pointer;
   font-weight: 600;
+  margin-top: 10px;
+}
+
+.retry-button:hover {
+  background-color: #f8f9fa;
+}
+.debug-controls {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+  width: 350px;
+}
+
+.debug-button {
+  padding: 8px 16px;
+  background-color: #3a3a5a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.debug-button.active {
+  background-color: #ff5555;
+}
+
+.test-pose-button {
+  margin-top: 5px;
+  margin-right: 5px;
+}
+
+.animation-controls {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.anim-button {
+  margin-right: 5px;
+  margin-bottom: 5px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+  background-color: #2a4d69;
+}
+
+.animation-controls span {
+  margin-left: 5px;
+  font-weight: bold;
+}
+
+.debug-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.keypoint-label {
+  position: absolute;
+  font-size: 12px;
+  background-color: rgba(0,0,0,0.7);
+  color: white;
+  padding: 2px 4px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.retry-button {
+  background-color: white;
+  color: #dc3545;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
 }
 
 .retry-button:hover {

@@ -14,7 +14,7 @@ const ConversationHistory = ({ conversations, onSelectConversation, onDeleteConv
 
   return (
     <div className="conversation-history">
-      <h3>Conversation History</h3>
+      <h3 style={{ textAlign: 'center' }}>Conversation History</h3>
       
       {conversations.length === 0 ? (
         <div className="no-conversations">

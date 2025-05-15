@@ -1,113 +1,137 @@
 .conversation-history {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    color: #333;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: #333;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.no-conversations {
+  text-align: center;
+  color: #6c757d;
+  margin-top: 30px;
+  padding: 20px;
+  border: 1px dashed #ced4da;
+  border-radius: 5px;
+}
+
+.conversations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.conversation-item {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.conversation-item:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+.conversation-header {
+  padding: 12px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.conversation-title {
+  font-weight: 500;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.conversation-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.conversation-time {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.expand-icon {
+  font-size: 0.75rem;
+  color: #6c757d;
+  width: 15px;
+  text-align: center;
+}
+
+.conversation-details {
+  padding: 0;
+  background-color: white;
+  animation: slideDown 0.3s ease;
+}
+
+.conversation-phrase {
+  padding: 12px 15px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.conversation-phrase:hover {
+  background-color: #f5f5f5;
+}
+
+.phrase-text {
+  margin-bottom: 5px;
+}
+
+.sign-word {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.sign-word span {
+  font-weight: bold;
+  color: #007bff;
+}
+
+.conversation-actions {
+  padding: 10px 15px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.delete-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.delete-button:hover {
+  background-color: #bd2130;
+}
+
+@keyframes slideDown {
+  from {
+    max-height: 0;
+    opacity: 0;
   }
-  
-  .conversation-history h3 {
-    margin: 0 0 15px 0;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #ddd;
-    font-size: 1.2rem;
-    color: #333;
+  to {
+    max-height: 1000px;
+    opacity: 1;
   }
-  
-  .conversations-list {
-    flex: 1;
-    overflow-y: auto;
-  }
-  
-  .no-conversations {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    text-align: center;
-    color: #888;
-    padding: 20px;
-  }
-  
-  .conversation-item {
-    margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    overflow: hidden;
-    background-color: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
-  
-  .conversation-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 15px;
-    cursor: pointer;
-    background-color: #f8f9fa;
-    transition: background-color 0.2s;
-  }
-  
-  .conversation-header:hover {
-    background-color: #f0f1f2;
-  }
-  
-  .conversation-title {
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .conversation-controls {
-    display: flex;
-    align-items: center;
-  }
-  
-  .conversation-time {
-    font-size: 0.8rem;
-    color: #666;
-    margin-right: 10px;
-  }
-  
-  .expand-icon {
-    color: #666;
-    font-size: 0.7rem;
-  }
-  
-  .conversation-details {
-    background-color: white;
-    border-top: 1px solid #eee;
-  }
-  
-  .conversation-phrase {
-    padding: 10px 15px;
-    text-align: left;
-    cursor: pointer;
-    border-bottom: 1px solid #f0f0f0;
-    transition: background-color 0.2s;
-  }
-  
-  .conversation-phrase:hover {
-    background-color: #f5f5f5;
-  }
-  
-  .conversation-actions {
-    padding: 10px 15px;
-    display: flex;
-    justify-content: flex-end;
-    background-color: #f8f9fa;
-  }
-  
-  .delete-button {
-    padding: 5px 10px;
-    border: none;
-    background-color: #f8d7da;
-    color: #721c24;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-  }
-  
-  .delete-button:hover {
-    background-color: #f5c6cb;
-  }
+}

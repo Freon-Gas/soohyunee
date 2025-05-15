@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+import './mode-buttons.css';
 import SignModel from './components/SignModel';
 import ConversationHistory from './components/ConversationHistory';
+import TestAnimation from './components/TestAnimation';
+import SignLanguageDemo from './components/SignLanguageDemo';
 
 function App() {
   const [text, setText] = useState('');
@@ -201,26 +204,43 @@ function App() {
   const processText = (text) => {
     setIsProcessing(true);
     
-    // For Korean text, we'll need to break down the text
-    const words = text.split(/\s+/);
-    
-    if (words.length === 0) {
+    // For Korean text, we need to process it properly
+    if (!text || !text.trim()) {
       setIsProcessing(false);
       setError('처리할 텍스트가 없습니다.');
       return;
     }
     
-    // Use the first word by default
-    let wordToAnimate = words[0];
-    
-    console.log(`Processing word: "${wordToAnimate}"`);
-    
-    // Set the current word - the SignModel component will try to load
-    // keypoint data from the folder with this name
-    setTimeout(() => {
-      setCurrentWord(wordToAnimate);
-      setIsProcessing(false);
-    }, 300);
+    // Import the sign language mapper
+    import('./utils/signLanguageMapper')
+      .then(({ extractKeySignWord, textToSignSequence }) => {
+        // Process the text to get key sign words
+        const keyWord = extractKeySignWord(text);
+        
+        if (!keyWord) {
+          setIsProcessing(false);
+          setError('추출할 수화 단어가 없습니다.');
+          return;
+        }
+        
+        console.log(`Processing word: "${keyWord}"`);
+        
+        // Set the current word - the SignModel component will try to load
+        // keypoint data from the folder with this name
+        setTimeout(() => {
+          setCurrentWord(keyWord);
+          setIsProcessing(false);
+        }, 300);
+        
+        // Future enhancement: Process full sequence of signs
+        // const signSequence = textToSignSequence(text);
+        // This would allow for showing multiple signs in sequence
+      })
+      .catch(error => {
+        console.error('Error processing text:', error);
+        setIsProcessing(false);
+        setError('텍스트 처리 중 오류가 발생했습니다.');
+      });
   };
 
   const handleSelectConversation = (convoId, phraseText) => {
@@ -244,9 +264,48 @@ function App() {
     setError(null);
   };
 
+  const [displayMode, setDisplayMode] = useState('normal'); // 'normal', 'test', or 'improved'
+
+  const toggleMode = (mode) => {
+    setDisplayMode(mode);
+  };
+
   return (
     <div className="app">
-      <div className={`app-container ${showSidebar ? 'with-sidebar' : ''}`}>
+      <div className="main-header">
+        <h1 className="app-title">SOOHYUNEE</h1>
+        <div className="mode-buttons">
+          <button 
+            className={`mode-button ${displayMode === 'normal' ? 'active' : ''}`} 
+            onClick={() => toggleMode('normal')}
+          >
+            일반 모드
+          </button>
+          <button 
+            className={`mode-button ${displayMode === 'test' ? 'active' : ''}`} 
+            onClick={() => toggleMode('test')}
+          >
+            테스트 모드
+          </button>
+          <button 
+            className={`mode-button ${displayMode === 'improved' ? 'active' : ''}`} 
+            onClick={() => toggleMode('improved')}
+          >
+            향상된 모드
+          </button>
+        </div>
+      </div>
+
+      {displayMode === 'test' ? (
+        <div className="app-content">
+          <TestAnimation />
+        </div>
+      ) : displayMode === 'improved' ? (
+        <div className="app-content">
+          <SignLanguageDemo />
+        </div>
+      ) : (
+        <div className={`app-container ${showSidebar ? 'with-sidebar' : ''}`}>
         {/* Sidebar with conversation history */}
         <div className="sidebar">
           <ConversationHistory 
@@ -263,7 +322,7 @@ function App() {
         
         <div className="main-content">
           <header className="app-header">
-            <h1>SOOHYUNEE</h1>
+            {/* Removed h1 since it's now in the main header */}
           </header>
 
           <main className="app-main">            
@@ -337,6 +396,7 @@ function App() {
           </main>
         </div>
       </div>
+      )}
     </div>
   );
 }

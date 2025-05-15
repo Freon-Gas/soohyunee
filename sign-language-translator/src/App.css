@@ -1,4 +1,58 @@
-.app {
+/* Add styles for the main app header */
+.app-header {
+  background-color: #1a1a2e;
+  padding: 10px 20px;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  z-index: 101;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.test-mode-button {
+  position: absolute;
+  right: 20px;
+  padding: 8px 16px;
+  background-color: #4a69bd;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.test-mode-button:hover {
+  background-color: #5a7bd1;
+}
+
+/* Adjust the main content layout */
+.app-content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 50px); /* Subtract header height */
+  margin-top: 50px;
+  overflow-y: auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+/* Adjust model container to take more space */
+.app-content .model-container {
+  margin-top: 20px;
+  flex-grow: 1;
+  width: 100%;
+  height: auto;
+  min-height: 500px;
+}.app {
   text-align: center;
   height: 100vh;
   overflow: hidden;
@@ -26,14 +80,14 @@
   width: 250px;
   background-color: #f8f9fa;
   border-right: 1px solid #ddd;
-  height: 100%;
+  height: calc(100% - 50px);
   overflow-y: auto;
   transition: transform 0.3s ease;
   padding: 15px;
   box-sizing: border-box;
   z-index: 100;
   left: 0;
-  top: 0;
+  top: 50px;
   transform: translateX(0);
 }
 
@@ -66,32 +120,27 @@
 }
 
 /* Fixed header */
-.app-header {
+.main-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  background-color: #343a40;
-  color: white;
-  padding: 1rem;
+  padding: 0.5rem;
   text-align: center;
-  z-index: 50;
+  z-index: 102;
+  height: 50px;
+  box-sizing: border-box;
 }
 
 .main-content .app-header {
   left: 250px;
   transition: left 0.3s ease;
+  position: relative;
+  top: 0;
 }
 
 .app-container:not(.with-sidebar) .main-content .app-header {
   left: 0;
-}
-
-.app-header h1 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: bold;
-  letter-spacing: 2px;
 }
 
 /* Main content area - adjusted for fixed header */
@@ -101,7 +150,8 @@
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  margin-top: 60px; /* To account for fixed header */
+  margin-top: 0;
+  padding-top: 10px;
 }
 
 .visualization-section {
@@ -337,4 +387,101 @@
   height: 100%;
   border-radius: 8px;
   overflow: hidden;
+}
+
+/* Test Mode Styles */
+
+/* Main header styles */
+.main-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #1a1a2e;
+  color: white;
+  padding: 0.5rem 1rem;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  box-sizing: border-box;
+  height: 50px;
+}
+
+.main-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.mode-toggle-button {
+  padding: 8px 16px;
+  background-color: #5c9aff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.mode-toggle-button:hover {
+  background-color: #4285f4;
+}
+
+.test-animation {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.test-controls {
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+  background-color: #f0f0f0;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.test-controls label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.test-controls input[type="text"] {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.test-controls button {
+  padding: 8px 16px;
+  background-color: #3a3a5a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.model-container {
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  overflow: hidden;
+  height: 500px;
+}
+
+.debug-info {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 5px;
+  border-left: 4px solid #3a3a5a;
 }
