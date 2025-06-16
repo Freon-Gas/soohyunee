@@ -1,146 +1,243 @@
+// Gemini API를 사용한 한국어 -> 수어 문법 변환
+
+// 간단한 fallback 변환 (Gemini API 실패시 사용)
 export function simpleSignLanguageConversion(text) {
-  console.log('🔄 Simple sign language conversion for:', text);
+  console.log('🔄 Simple fallback conversion for:', text);
   
   // 기본 전처리
-  const cleanText = text.trim().replace(/[.,!?]/g, '');
+  let cleanText = text.trim();
+  
+  // 높임말 제거
+  cleanText = cleanText
+    .replace(/습니다/g, '다')
+    .replace(/세요/g, '다')
+    .replace(/어요/g, '다')
+    .replace(/아요/g, '다')
+    .replace(/에요/g, '다')
+    .replace(/예요/g, '다')
+    .replace(/ㅂ니다/g, '다')
+    .replace(/요$/g, '')
+    .replace(/[.,!?]/g, '');
+  
+  // 조사 제거
+  cleanText = cleanText
+    .replace(/은\/는/g, '')
+    .replace(/이\/가/g, '')
+    .replace(/을\/를/g, '')
+    .replace(/에서/g, '')
+    .replace(/에게/g, '')
+    .replace(/한테/g, '')
+    .replace(/로/g, '')
+    .replace(/으로/g, '')
+    .replace(/와/g, '')
+    .replace(/과/g, '')
+    .replace(/의/g, '')
+    .replace(/도/g, '');
+  
+  // 일반적인 변환
+  const conversions = {
+    '안녕하세요': '안녕하세요',
+    '안녕': '안녕하세요',
+    '고맙습니다': '감사',
+    '고마워요': '감사', 
+    '감사합니다': '감사',
+    '죄송합니다': '미안',
+    '미안해요': '미안',
+    '나는': '나',
+    '너는': '너',
+    '저는': '나',
+    '당신은': '너'
+  };
+  
+  // 변환 적용
+  Object.keys(conversions).forEach(key => {
+    cleanText = cleanText.replace(new RegExp(key, 'g'), conversions[key]);
+  });
   
   // 단어 분리
   const words = cleanText.split(/\s+/).filter(word => word.length > 0);
   
-  // 수어 순서로 재배열 (한국 수어 문법: SOV 순서)
-  const rearrangedWords = rearrangeForSignLanguage(words);
+  console.log('📝 Converted words:', words);
   
   return {
     originalText: text,
-    signGrammar: rearrangedWords.join(' '),
-    wordSequence: rearrangedWords
+    signGrammar: words.join(' '),
+    wordSequence: words
   };
 }
 
-// 수어 문법 순서로 재배열
-function rearrangeForSignLanguage(words) {
-  // 기본적인 한국 수어 문법 적용
-  // 주어 + 목적어 + 동사 순서
-  
-  // 간단한 패턴 매칭
-  const verbPatterns = [
-    '있다', '없다', '하다', '가다', '오다', '보다', '먹다', '마시다',
-    '좋다', '나쁘다', '크다', '작다', '예쁘다', '맛있다'
-  ];
-  
-  const subjectPatterns = [
-    '나', '너', '우리', '그', '이', '저', '사람', '친구'
-  ];
-  
-  let rearranged = [...words];
-  
-  // 동사를 마지막으로 이동
-  for (let i = 0; i < rearranged.length; i++) {
-    const word = rearranged[i];
-    if (verbPatterns.some(pattern => word.includes(pattern))) {
-      const verb = rearranged.splice(i, 1)[0];
-      rearranged.push(verb);
-      break;
-    }
-  }
-  
-  return rearranged;
-}
-
-// 고급 수어 문법 변환 (API 기반)
+// 고급 수어 문법 변환 (Gemini API 기반)
 export async function convertToSignLanguageGrammar(text) {
   console.log('🤖 Advanced sign language conversion for:', text);
   
   try {
-    // 기본 변환 먼저 수행
-    const result = simpleSignLanguageConversion(text);
-    console.log('📝 Basic conversion result:', result);
+    // Gemini API를 사용한 수어 문법 변환
+    const geminiResult = await callGeminiForSignLanguageConversion(text);
     
-    // 수어 데이터베이스에 있는 단어만 필터링
-    const availableWords = await filterAvailableSignWords(result.wordSequence);
-    console.log('✅ Available words after filtering:', availableWords);
-    
-    // 빈 결과인 경우 랜덤 단어 사용
-    if (availableWords.length === 0) {
-      const defaultWords = ['사과', '사거리', '사고력'];
-      const randomDefault = defaultWords[Math.floor(Math.random() * defaultWords.length)];
-      console.log(`⚠️ No available words found, using random default "${randomDefault}"`);
-      availableWords.push(randomDefault);
+    if (geminiResult && geminiResult.wordSequence && geminiResult.wordSequence.length > 0) {
+      console.log('✅ Gemini API conversion successful:', geminiResult);
+      
+      return {
+        originalText: text,
+        signGrammar: geminiResult.signGrammar,
+        wordSequence: geminiResult.wordSequence,
+        confidence: geminiResult.confidence || 0.9
+      };
+    } else {
+      throw new Error('Gemini API returned invalid result');
     }
     
+  } catch (error) {
+    console.error('❌ Gemini API conversion failed:', error);
+    console.log('🔄 Falling back to simple conversion');
+    
+    // 실패시 기본 변환 사용
+    const result = simpleSignLanguageConversion(text);
+    console.log('📝 Fallback conversion result:', result);
+    
     return {
       originalText: text,
-      signGrammar: availableWords.join(' '),
-      wordSequence: availableWords,
-      confidence: 0.8
+      signGrammar: result.signGrammar,
+      wordSequence: result.wordSequence,
+      confidence: 0.6
     };
+  }
+}
+
+// Gemini API 호출 함수
+async function callGeminiForSignLanguageConversion(text) {
+  console.log('🌟 Calling Gemini API for sign language conversion:', text);
+  
+  const API_KEY = process.env.REACT_APP_GEMINI_API_KEY;
+  
+  if (!API_KEY) {
+    console.error('❌ Gemini API key not found in environment variables');
+    throw new Error('Gemini API key not configured. Please set REACT_APP_GEMINI_API_KEY in your .env file');
+  }
+  
+  const prompt = `
+당신은 한국 수어 전문가입니다. 주어진 한국어 문장을 한국 수어 문법에 맞게 변환해주세요.
+
+한국 수어 문법 규칙:
+1. 어순: 주어 + 목적어 + 동사 (SOV)
+2. 시제 표현: 시간 부사를 문장 앞에
+3. 의문문: 의문사를 문장 끝에
+4. 부정문: 부정 표현을 동사 뒤에
+5. 높임말 제거: 수어에서는 높임말을 사용하지 않음 (합니다 → 하다)
+6. 조사 생략: '은/는', '이/가', '을/를' 등 조사 완전 제거
+7. 어미 정리: 동사는 '-다' 형태로 통일
+8. 복잡한 어미 단순화: -습니다, -세요, -어요 등을 기본형으로
+
+변환할 문장: "${text}"
+
+반드시 다음 JSON 형식으로만 응답해주세요 (다른 텍스트나 마크다운 없이 순수 JSON만):
+{
+  "originalText": "${text}",
+  "signGrammar": "수어 문법으로 변환된 문장",
+  "wordSequence": ["변환된", "단어들", "배열"],
+  "confidence": 0.95
+}
+
+변환 예시:
+입력: "나는 사과를 먹습니다" → 출력: {"originalText": "나는 사과를 먹습니다", "signGrammar": "나 사과 먹다", "wordSequence": ["나", "사과", "먹다"], "confidence": 0.95}
+입력: "오늘 학교에 갔어요" → 출력: {"originalText": "오늘 학교에 갔어요", "signGrammar": "오늘 학교 가다", "wordSequence": ["오늘", "학교", "가다"], "confidence": 0.95}
+입력: "안녕하세요" → 출력: {"originalText": "안녕하세요", "signGrammar": "안녕하세요", "wordSequence": ["안녕하세요"], "confidence": 0.95}
+
+중요: 마크다운 코드 블록(\`\`\`), 설명, 기타 텍스트 없이 JSON 객체만 응답하세요.`;
+  
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: prompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 256,
+          topP: 0.8,
+          topK: 10
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gemini API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('🌟 Gemini API raw response:', data);
+    
+    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+      const responseText = data.candidates[0].content.parts[0].text;
+      console.log('📝 Gemini response text:', responseText);
+      
+      // JSON 파싱 시도
+      try {
+        // 마크다운 코드 블록 제거 및 JSON 추출
+        let jsonText = responseText.trim();
+        
+        // ```json 또는 ``` 블록 제거
+        jsonText = jsonText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+        
+        // 앞뒤 공백 제거
+        jsonText = jsonText.trim();
+        
+        // JSON 객체만 추출 (첫 번째 { 부터 마지막 } 까지)
+        const startIndex = jsonText.indexOf('{');
+        const endIndex = jsonText.lastIndexOf('}');
+        
+        if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+          jsonText = jsonText.substring(startIndex, endIndex + 1);
+        }
+        
+        console.log('🔄 Cleaned JSON text:', jsonText);
+        
+        const parsedResult = JSON.parse(jsonText);
+        console.log('✅ Parsed Gemini result:', parsedResult);
+        
+        // 결과 검증
+        if (parsedResult.wordSequence && Array.isArray(parsedResult.wordSequence) && parsedResult.wordSequence.length > 0) {
+          return parsedResult;
+        } else {
+          throw new Error('Invalid response format from Gemini - missing or empty wordSequence');
+        }
+        
+      } catch (parseError) {
+        console.error('❌ Failed to parse Gemini JSON response:', parseError);
+        console.log('📄 Raw response text:', responseText);
+        
+        // 간단한 파싱 시도 (JSON이 아닌 경우)
+        const words = responseText
+          .replace(/[{}\\[\\]"]/g, '') // JSON 문자 제거
+          .split(/[,\\s]+/) // 쉼표나 공백으로 분리
+          .filter(word => word.length > 0 && !word.includes('JSON') && !word.includes('originalText'))
+          .slice(0, 10); // 최대 10개 단어만
+        
+        if (words.length > 0) {
+          return {
+            originalText: text,
+            signGrammar: words.join(' '),
+            wordSequence: words,
+            confidence: 0.7,
+            explanation: 'Parsed from non-JSON response'
+          };
+        }
+        
+        throw parseError;
+      }
+    } else {
+      throw new Error('Invalid response structure from Gemini API');
+    }
     
   } catch (error) {
-    console.error('❌ Advanced conversion failed:', error);
-    // 실패시 랜덤 단어로 폴백
-    const fallbackWords = ['사과', '사거리', '사고력'];
-    const randomFallback = fallbackWords[Math.floor(Math.random() * fallbackWords.length)];
-    console.log(`🎲 Using random fallback due to error: "${randomFallback}"`);
-    
-    return {
-      originalText: text,
-      signGrammar: randomFallback,
-      wordSequence: [randomFallback],
-      confidence: 0.3
-    };
+    console.error('❌ Gemini API call failed:', error);
+    throw error;
   }
-}
-
-// 사용 가능한 수어 단어 필터링
-async function filterAvailableSignWords(words) {
-  console.log('🔍 Filtering available sign words:', words);
-  
-  const availableWords = [];
-  
-  for (const word of words) {
-    console.log(`🔍 Processing word: "${word}"`);
-    
-    // 단순히 단어를 그대로 사용 - 폴더가 있으면 사용, 없으면 유사한 단어로 대체
-    const finalWord = findSimilarSignWord(word);
-    console.log(`✅ Using word: "${finalWord}" for "${word}"`);
-    availableWords.push(finalWord);
-  }
-  
-  console.log(`✅ Final available words: [${availableWords.join(', ')}]`);
-  return availableWords;
-}
-
-
-
-// 유사한 수어 단어 찾기 (또는 그대로 반환)
-function findSimilarSignWord(word) {
-  console.log(`🔍 Using word as-is: "${word}"`);
-  
-  // 그냥 단어 그대로 사용 - 폴더가 있으면 로딩, 없으면 ImprovedKeypointSignModel에서 처리
-  return word;
-}
-
-// 수어 애니메이션 속도 조정
-export function getAnimationSpeed(word) {
-  // 단어별 최적 애니메이션 속도
-  const speedMap = {
-    '사과': 2000,    // 2초
-    '안녕': 1500,    // 1.5초  
-    '고맙다': 2500,  // 2.5초
-    '미안': 2000,    // 2초
-  };
-  
-  return speedMap[word] || 2000; // 기본 2초
-}
-
-// 수어 표현 난이도
-export function getSignComplexity(word) {
-  const complexityMap = {
-    '사과': 'medium',
-    '안녕': 'easy',
-    '고맙다': 'hard',
-    '미안': 'medium'
-  };
-  
-  return complexityMap[word] || 'medium';
 }

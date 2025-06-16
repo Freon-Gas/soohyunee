@@ -4,6 +4,7 @@ import SignModel from './components/ImprovedKeypointSignModel';
 import ConversationHistory from './components/ConversationHistory';
 import KoreanSpeechRecognition from './utils/speechRecognition';
 import { convertToSignLanguageGrammar, simpleSignLanguageConversion } from './utils/signLanguageGrammar';
+import { preloadWordSequence } from './utils/preloadUtils';
 
 function App() {
   const [text, setText] = useState('');
@@ -13,6 +14,9 @@ function App() {
   const [currentWord, setCurrentWord] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
+  const [isPreloading, setIsPreloading] = useState(false);
+  const [preloadProgress, setPreloadProgress] = useState({ loaded: 0, total: 0 });
+  const [preloadedData, setPreloadedData] = useState({});
   const [isRecording, setIsRecording] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
@@ -33,9 +37,45 @@ function App() {
   // const lastProcessedTextRef = useRef(''); // Removed or not used for duplicate prevention
   const isWordSequenceRunningRef = useRef(false);
 
-  // 최적화된 수어 단어 시퀀스 처리 - 콜백 방식
+  // 전체 단어 시퀀스 미리 로딩
+  const preloadSequence = useCallback(async (sequence) => {
+    if (!sequence || sequence.length === 0) {
+      return {};
+    }
+
+    console.log('🚀 Starting preload for sequence:', sequence);
+    setIsPreloading(true);
+    setPreloadProgress({ loaded: 0, total: sequence.length });
+
+    try {
+      // 진행상황 업데이트 콜백
+      const originalPreload = preloadWordSequence;
+      
+      // 커스텀 프리로딩 함수로 진행상황 추적
+      const result = await preloadWordSequence(sequence, (progressInfo) => {
+        setPreloadProgress({
+          loaded: progressInfo.loaded,
+          total: progressInfo.total
+        });
+      });
+      
+      setPreloadedData(result.data);
+      setPreloadProgress({ loaded: result.summary.success, total: sequence.length });
+      
+      console.log('✅ Preload completed:', result.summary);
+      return result.data;
+      
+    } catch (error) {
+      console.error('❌ Preload failed:', error);
+      return {};
+    } finally {
+      setIsPreloading(false);
+    }
+  }, []);
+
+  // 최적화된 수어 단어 시퀀스 처리 - 미리 로딩된 데이터 사용
   const processSignLanguageSequence = useCallback(async (sequence) => {
-    
+    console.log('🎭 Processing sequence with preloaded data:', sequence);
     
     // 이미 실행 중이면 중단
     if (isWordSequenceRunningRef.current) {
@@ -61,17 +101,26 @@ function App() {
         setCurrentWordIndex(i);
         setCurrentWord(word);
         
+        // 미리 로딩된 데이터가 있는지 확인
+        const wordData = preloadedData[word];
+        if (wordData) {
+          console.log(`📊 Using preloaded data for "${word}" (${wordData.length} frames)`);
+        } else {
+          console.log(`⚠️ No preloaded data for "${word}", will load on demand`);
+        }
+        
         // 애니메이션 완료 대기
         await waitForAnimationCompleteOrError();
       }
       
     } catch (error) {
+      console.error('❌ Sequence processing error:', error);
     } finally {
       setIsProcessing(false);
       isWordSequenceRunningRef.current = false;
       processingTimeoutRef.current = null;
     }
-  }, []);
+  }, [preloadedData]);
 
   // 애니메이션 완료 대기 후 
   const waitForAnimationCompleteOrError = useCallback(() => {
@@ -251,16 +300,25 @@ function App() {
     let convertedSignGrammar = '';
     
     try {
+      console.log('🔄 Starting sign language grammar conversion for:', transcript);
       const conversion = await convertToSignLanguageGrammar(transcript);
+      console.log('✅ Grammar conversion result:', conversion);
+      
       convertedSignGrammar = conversion.signGrammar;
       setSignGrammarText(conversion.signGrammar);
       setWordSequence(conversion.wordSequence);
       
-      // 첫 번째 단어부터 애니메이션 시작
+      // 전체 시퀀스 미리 로딩 후 애니메이션 시작
       if (conversion.wordSequence.length > 0) {
         setCurrentWordIndex(0);
+        
+        // 미리 로딩 시작
+        const preloadedWords = await preloadSequence(conversion.wordSequence);
+        
+        // 미리 로딩 완료 후 애니메이션 시작
         processSignLanguageSequence(conversion.wordSequence);
       } else {
+        console.log('⚠️ No word sequence generated');
       }
       
     } catch (error) {
@@ -300,7 +358,9 @@ function App() {
     let convertedSignGrammar = '';
     
     try {
+      console.log('🔄 Starting sign language grammar conversion for:', textToProcess);
       const conversion = await convertToSignLanguageGrammar(textToProcess);
+      console.log('✅ Grammar conversion result:', conversion);
       
       convertedSignGrammar = conversion.signGrammar;
       setSignGrammarText(conversion.signGrammar);
@@ -308,6 +368,11 @@ function App() {
       
       if (conversion.wordSequence.length > 0) {
         setCurrentWordIndex(0);
+        
+        // 미리 로딩 시작
+        const preloadedWords = await preloadSequence(conversion.wordSequence);
+        
+        // 미리 로딩 완료 후 애니메이션 시작
         processSignLanguageSequence(conversion.wordSequence);
       }
       
@@ -387,12 +452,19 @@ function App() {
     // 수어 문법 변환으로 처리
     setIsConverting(true);
     try {
+      console.log('🔄 Starting sign language grammar conversion for:', phraseText);
       const conversion = await convertToSignLanguageGrammar(phraseText);
+      console.log('✅ Grammar conversion result:', conversion);
       setSignGrammarText(conversion.signGrammar);
       setWordSequence(conversion.wordSequence);
       
       if (conversion.wordSequence.length > 0) {
-        setCurrentWordIndex(0);
+      setCurrentWordIndex(0);
+      
+        // 미리 로딩 시작
+        const preloadedWords = await preloadSequence(conversion.wordSequence);
+        
+        // 미리 로딩 완료 후 애니메이션 시작
         processSignLanguageSequence(conversion.wordSequence);
       }
     } catch (error) {
@@ -494,28 +566,58 @@ function App() {
             {/* 3D Model Visualization */}
             <div className="visualization-section">
               <SignModel 
-                word={currentWord} 
+                word={currentWord}
+                preloadedData={preloadedData}
                 onAnimationComplete={handleAnimationComplete}
                 onReset={signModelRef}
               />
               
               {/* Model info - 사이드바 위치에 따라 동적 이동 */}
-              {currentWord && (
+              {(currentWord || signGrammarText) && (
                 <div className="model-info">
-                  <div className="current-word">
-                    수어: {currentWord}
-                    {wordSequence.length > 0 && (
-                      <span className="word-progress">
-                        ({currentWordIndex + 1}/{wordSequence.length})
-                      </span>
-                    )}
-                  </div>
-                  {signGrammarText && text !== signGrammarText && (
-                    <div className="grammar-conversion">
-                      <div className="original-text">원문: {text}</div>
-                      <div className="sign-grammar">수어: {signGrammarText}</div>
+                  {currentWord && (
+                    <div className="current-word">
+                      현재 수어: {currentWord}
+                      {wordSequence.length > 0 && (
+                        <span className="word-progress">
+                          ({currentWordIndex + 1}/{wordSequence.length})
+                        </span>
+                      )}
                     </div>
                   )}
+                  {signGrammarText && text !== signGrammarText && (
+                    <div className="grammar-conversion">
+                      <div className="original-text">💬 원문: {text}</div>
+                      <div className="sign-grammar">🤟 수어 문법: {signGrammarText}</div>
+                      {wordSequence.length > 0 && (
+                        <div className="word-sequence">
+                          🔄 단어 순서: [{wordSequence.join(', ')}]
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {signGrammarText && text === signGrammarText && (
+                    <div className="simple-info">
+                      🤟 수어: {signGrammarText}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Show preloading progress */}
+              {isPreloading && (
+                <div className="preload-status">
+                  <div className="preload-indicator">
+                    수어 데이터 로딩 중... ({preloadProgress.loaded}/{preloadProgress.total})
+                    <div className="preload-progress-bar">
+                      <div 
+                        className="preload-progress-fill"
+                        style={{ 
+                          width: `${preloadProgress.total > 0 ? (preloadProgress.loaded / preloadProgress.total) * 100 : 0}%` 
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
               
@@ -547,7 +649,7 @@ function App() {
                 <button 
                   className={`speech-button ${isRecording ? 'active' : ''} ${isProcessing ? 'processing' : ''}`}
                   onClick={toggleSpeechRecognition}
-                  disabled={isProcessing || !recognitionSupported}
+                  disabled={isProcessing || isPreloading || !recognitionSupported}
                 >
                   {isProcessing ? (
                     <div className="loading-spinner"></div>
@@ -573,12 +675,12 @@ function App() {
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="번역할 텍스트를 입력하세요..."
-                    disabled={isProcessing}
+                    disabled={isProcessing || isPreloading}
                   />
                   <button 
                     className="submit-button"
                     onClick={handleTextInput}
-                    disabled={isProcessing || !inputText.trim()}
+                    disabled={isProcessing || isPreloading || !inputText.trim()}
                   >
                     →
                   </button>

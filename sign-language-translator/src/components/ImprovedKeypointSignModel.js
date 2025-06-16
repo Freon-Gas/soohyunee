@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { loadKeypointsForWord } from '../utils/indexBasedAnimationUtils';
 import './SignModel.css';
 
-const ImprovedKeypointSignModel = ({ word, onAnimationComplete, onReset }) => {
+const ImprovedKeypointSignModel = ({ word, preloadedData, onAnimationComplete, onReset }) => {
   // State
   const [status, setStatus] = useState({
     loading: false,
@@ -226,13 +226,23 @@ const ImprovedKeypointSignModel = ({ word, onAnimationComplete, onReset }) => {
     animate();
   };
 
-  // 간단하고 확실한 키포인트 데이터 로딩
+  // 키포인트 데이터 로딩 (미리 로딩된 데이터 우선 사용)
   const loadKeypointData = async (word) => {
     setStatus({ loading: true, message: `"${word}" 수어 데이터를 불러오는 중...`, error: null });
 
     try {
-      // 새로운 간단한 로더 사용
-      const frames = await loadKeypointsForWord(word);
+      let frames;
+      
+      // 미리 로딩된 데이터가 있는지 확인
+      if (preloadedData && preloadedData[word]) {
+        console.log(`📦 Using preloaded data for "${word}"`);
+        frames = preloadedData[word];
+        setStatus({ loading: false, message: `"${word}" 미리 로딩된 데이터 사용`, error: null });
+      } else {
+        console.log(`🔄 Loading data on demand for "${word}"`);
+        // 미리 로딩된 데이터가 없으면 기존 방식으로 로딩
+        frames = await loadKeypointsForWord(word);
+      }
       
       
       // Check if data is already processed and if so, use it directly
