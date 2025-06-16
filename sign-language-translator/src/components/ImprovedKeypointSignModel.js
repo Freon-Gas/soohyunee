@@ -527,58 +527,46 @@ const ImprovedKeypointSignModel = ({ word, onAnimationComplete, onReset }) => {
   };
 
   // 프레임 데이터 스케일링 및 위치 조정 함수 - 기울어진 문제 해결
-  const scaleFrameData = (frameData, scaleFactor) => {
-    // Check if this is sign language data (large coordinates)
-    const isSignLanguageData = frameData.pose && frameData.pose.length > 0 && 
-      frameData.pose.some(p => p.x && (Math.abs(p.x) > 100 || Math.abs(p.y) > 100));
-    
-    // 기울어진 문제 해결을 위한 회전 및 위치 조정 - 훨씬 더 강하게 적용
-    let rotationAngle = 0;
-    let positionOffset = { x: 0, y: 0, z: 0 };
-    
-    if (isSignLanguageData) {
-      // 수어 데이터인 경우 훨씬 더 강한 회전과 위치 조정 적용
-      rotationAngle = 0.05; // 약 14.3도 시계방향 회전으로 기울어짐 훨씬 더 강하게 보정
-      positionOffset = { x: 0.15, y: -0.8, z: 0 }; // 훨씬 더 오른쪽으로, 훨씬 더 아래로 이동
-    }
-    
-    const scaleAndAdjustPoints = (points, yOffset = 0) => {
-      return points.map(point => {
-        let adjustedX = point.x * scaleFactor;
-        let adjustedY = point.y * scaleFactor + yOffset;
-        let adjustedZ = point.z * scaleFactor;
-        
-        // 회전 적용 (Z축 중심 회전)
-        if (rotationAngle !== 0) {
-          const cos = Math.cos(rotationAngle);
-          const sin = Math.sin(rotationAngle);
-          const newX = adjustedX * cos - adjustedY * sin;
-          const newY = adjustedX * sin + adjustedY * cos;
-          adjustedX = newX;
-          adjustedY = newY;
-        }
-        
-        // 위치 오프셋 적용
-        adjustedX += positionOffset.x;
-        adjustedY += positionOffset.y;
-        adjustedZ += positionOffset.z;
-        
-        return {
-          ...point,
-          x: adjustedX,
-          y: adjustedY,
-          z: adjustedZ
-        };
-      });
-    };
-
-    return {
-      pose: frameData.pose ? scaleAndAdjustPoints(frameData.pose, 0) : [],
-      leftHand: frameData.leftHand ? scaleAndAdjustPoints(frameData.leftHand, 0) : [],
-      rightHand: frameData.rightHand ? scaleAndAdjustPoints(frameData.rightHand, 0) : [],
-      face: frameData.face ? scaleAndAdjustPoints(frameData.face, 0) : []
-    };
+const scaleFrameData = (frameData, scaleFactor) => {
+  // 모든 데이터에 기울어진 문제 해결을 위한 회전 및 위치 조정 적용
+  const rotationAngle = 0.05; // 약 14.3도 시계방향 회전으로 기울어짐 보정
+  const positionOffset = { x: 0.15, y: -0.8, z: 0 }; // 오른쪽으로, 아래로 이동
+  
+  const scaleAndAdjustPoints = (points, yOffset = 0) => {
+    return points.map(point => {
+      let adjustedX = point.x * scaleFactor;
+      let adjustedY = point.y * scaleFactor + yOffset;
+      let adjustedZ = point.z * scaleFactor;
+      
+      // 회전 적용 (Z축 중심 회전) - 모든 데이터에 적용
+      const cos = Math.cos(rotationAngle);
+      const sin = Math.sin(rotationAngle);
+      const newX = adjustedX * cos - adjustedY * sin;
+      const newY = adjustedX * sin + adjustedY * cos;
+      adjustedX = newX;
+      adjustedY = newY;
+      
+      // 위치 오프셋 적용 - 모든 데이터에 적용
+      adjustedX += positionOffset.x;
+      adjustedY += positionOffset.y;
+      adjustedZ += positionOffset.z;
+      
+      return {
+        ...point,
+        x: adjustedX,
+        y: adjustedY,
+        z: adjustedZ
+      };
+    });
   };
+
+  return {
+    pose: frameData.pose ? scaleAndAdjustPoints(frameData.pose, 0) : [],
+    leftHand: frameData.leftHand ? scaleAndAdjustPoints(frameData.leftHand, 0) : [],
+    rightHand: frameData.rightHand ? scaleAndAdjustPoints(frameData.rightHand, 0) : [],
+    face: frameData.face ? scaleAndAdjustPoints(frameData.face, 0) : []
+  };
+};
 
   // 프레임 시각화
   const visualizeFrame = (frameData) => {
