@@ -13,11 +13,11 @@
 
 ## :key: **Key Features**
 ### 🎭 3D 수어 시각화
-- **OpenPose 키포인트 기반** 실시간 3D 수어 애니메이션
-- **Three.js**를 활용한 고품질 3D 렌더링
-- 포즈, 손동작, 얼굴 표정을 포함한 **전신 수어 표현**
-- 마우스를 통한 **360도 시점 조작** 및 줌 기능
-- **메쉬 렌더링**을 통한 사실적인 인체 표현
+- OpenPose 키포인트 기반 실시간 3D 수어 시각화
+- Three.js를 활용한 고품질 3D 렌더링
+- 포즈, 손동작, 얼굴 표정을 포함한 전신 키포인트 표현
+- 스켈레톤 구조와 메쉬 렌더링을 통한 직관적인 수어 동작 표현
+- 고정된 최적 시점으로 일관된 시각화 제공
 
 ### 🎤 실시간 음성 인식
 - **Web Speech API**를 활용한 실시간 한국어 음성 인식
@@ -27,7 +27,7 @@
 
 ### 🔄 지능형 수어 문법 변환
 - 한국어 문장을 **수어 문법에 맞게 자동 변환**
-- **2,853개** 한국 수어 단어 데이터베이스 지원
+- **3,109개** 한국 수어 단어 데이터베이스 지원
 - 자연어 처리를 통한 **의미 보존** 번역
 - 수어 특성을 고려한 **어순 재배열**
 
@@ -41,13 +41,12 @@
 - **재생/일시정지** 제어
 - **프레임별 이동** 슬라이더
 - **속도 조절** (2-30 FPS)
-- **메쉬 표시/숨김** 토글
+- **애니메이션 완료** 콜백 시스템
 
 ### 📱 반응형 UI
 - **모바일, 태블릿, 데스크톱** 완벽 지원
 - **Glass Morphism** 디자인 적용
 - 직관적이고 **접근성 높은** 사용자 인터페이스
-- **다크 테마** 기반 시각적 편안함
 
 ## 🚀 빠른 시작
 
@@ -72,6 +71,14 @@ npm start
 ```
 
 애플리케이션이 [http://localhost:3000](http://localhost:3000)에서 실행됩니다.
+
+### 환경 변수 설정
+.env 파일에 다음 API 키를 설정하세요:
+#Google Gemini API 키 (수어 문법 변환용)
+REACT_APP_GEMINI_API_KEY=your_gemini_api_key_here
+
+#OpenAI API 키 (선택사항)
+REACT_APP_OPENAI_API_KEY=your_openai_api_key_here
 
 ### 프로덕션 빌드
 
@@ -105,29 +112,37 @@ npm run test:coverage
 ## 🎯 사용 방법
 
 ### 1. 텍스트 입력
-- 하단 플로팅 입력창에 번역할 한국어 텍스트 입력
-- **Enter** 키 또는 **전송 버튼** 클릭으로 번역 시작
-- 실시간으로 수어 문법 변환 및 3D 애니메이션 표시
+
+하단 입력창에 번역할 한국어 텍스트 입력
+Enter 키 또는 전송 버튼 클릭으로 번역 시작
+실시간으로 수어 문법 변환 및 3D 애니메이션 표시
 
 ### 2. 음성 입력
-- **마이크 버튼** 클릭하여 음성 인식 시작
-- 명확하게 **한국어로 발음**
-- 중간 결과를 실시간으로 확인 가능
-- 음성 인식 완료 시 자동으로 번역 시작
 
-### 3. 3D 애니메이션 조작
-- **마우스 드래그**: 시점 회전
-- **마우스 휠**: 줌 인/아웃
-- **애니메이션 컨트롤 패널**:
-  - 재생/일시정지/리셋 버튼
-  - 프레임 슬라이더로 특정 구간 이동
-  - 속도 조절 (2-30 FPS)
-  - 메쉬 표시/숨김 토글
+마이크 버튼 클릭하여 음성 인식 시작
+명확하게 한국어로 발음
+중간 결과를 실시간으로 확인 가능
+음성 인식 완료 시 자동으로 번역 시작
+
+### 3. 3D 키포인트 시각화 조작
+
+고정된 최적 시점으로 일관된 시각화
+애니메이션 컨트롤 패널:
+
+재생/일시정지/리셋 버튼
+프레임 슬라이더로 특정 구간 이동
+속도 조절 (5-30 FPS)
+진행률 표시 (현재 프레임/전체 프레임)
+
+
+키포인트 색상 구분: 포즈(갈색), 왼손(초록), 오른손(파랑), 얼굴(골드)
+스켈레톤 + 메쉬 동시 표시로 직관적인 이해
 
 ### 4. 대화 기록
-- 좌측 **사이드바 토글**로 대화 기록 확인
-- 과거 번역 기록 **클릭하여 재생**
-- **삭제 버튼**으로 불필요한 기록 제거
+
+좌측 사이드바 토글로 대화 기록 확인
+과거 번역 기록 클릭하여 재생
+삭제 버튼으로 불필요한 기록 제거
 
 ## 🏗️ 프로젝트 구조
 
@@ -135,25 +150,31 @@ npm run test:coverage
 sign-language-translator/
 ├── public/                    # 정적 파일
 │   ├── data/                  # 수어 데이터
-│   │   └── word-patterns.json # 단어별 키포인트 패턴 정보
-│   ├── index.html             # HTML 템플릿
-│   └── manifest.json          # PWA 매니페스트
+│   │   ├── signs/            # 3,109개 수어 단어별 키포인트 데이터
+│   │   │   ├── 가다/         # 각 단어별 폴더
+│   │   │   ├── 사과/         # JSON 키포인트 파일들
+│   │   │   └── ...
+│   │   ├── sentences/        # 문장 데이터
+│   │   └── word-patterns.json # 단어 패턴 정보
+│   ├── index.html            # HTML 템플릿
+│   └── manifest.json         # PWA 매니페스트
 ├── src/                       # 소스 코드
 │   ├── components/            # React 컴포넌트
-│   │   ├── ImprovedKeypointSignModel.js  # 3D 수어 시각화
+│   │   ├── ImprovedKeypointSignModel.js  # 3D 수어 시각화 (메인)
 │   │   ├── ConversationHistory.js        # 대화 기록
-│   │   └── ...
+│   │   ├── SignModel.css                 # 3D 모델 스타일
+│   │   └── ConversationHistory.css       # 대화 기록 스타일
 │   ├── utils/                 # 유틸리티 함수
-│   │   ├── speechRecognition.js          # 음성 인식
-│   │   ├── signLanguageGrammar.js        # 수어 문법 변환
-│   │   ├── indexBasedAnimationUtils.js   # 애니메이션 로더
-│   │   └── ...
-│   ├── App.js                 # 메인 애플리케이션
+│   │   ├── speechRecognition.js          # Web Speech API 래퍼
+│   │   ├── signLanguageGrammar.js        # 수어 문법 변환 (Gemini API)
+│   │   └── indexBasedAnimationUtils.js   # 애니메이션 로더
+│   ├── App.js                 # 메인 애플리케이션 (상태 관리)
 │   ├── App.css                # 메인 스타일시트
 │   ├── index.js               # 애플리케이션 진입점
 │   └── index.css              # 전역 스타일
+├── .env.example               # 환경 변수 템플릿
+├── generate-word-index.js     # 단어 인덱스 생성 스크립트
 ├── package.json               # 프로젝트 설정
-└── README.md                  # 프로젝트 문서
 ```
 
 ## 🔧 기술 스택
@@ -168,23 +189,38 @@ sign-language-translator/
 - **OpenPose** - 키포인트 데이터 형식
 - **WebGL** - 하드웨어 가속 3D 렌더링
 - **Three.js Mesh** - 사실적인 인체 표현
+- **색상 구분 시스템** - 신체 부위별 직관적 색상 매핑
 
 ### Data & Storage
 - **JSON** - 키포인트 데이터 저장
 - **Local Storage** - 대화 기록 저장
-- **Axios** 1.9.0 - HTTP 클라이언트
+- **Dynamic Loading** - 필요수어 데이터만 로딩
 
 ### Development Tools
 - **Create React App** 5.0.1 - 프로젝트 설정
-- **ESLint** - 코드 품질 관리
-- **Prettier** - 코드 포맷팅
-- **Jest** - 테스트 프레임워크
+- **Node.js** 
 
-### Backend Support
-- **Express.js** 5.1.0 - 개발 서버
-- **Multer** 1.4.5 - 파일 업로드 처리
-- **Form-data** 4.0.2 - 멀티파트 데이터 처리
+### AI & API Integration
+- **Google Gemini API** - 수어 문법 변환
+- **OpenAI API** - 대체 텍스트 처리(optional)
 
+## 핵심 구현 특징
+### 수어 문법 변환 시스템
+javascript// 한국어 → 수어 문법 (SOV 구조) 변환
+export async function convertToSignLanguageGrammar(text) {
+  // 1. Google Gemini API를 통한 지능형 변환
+  // 2. Fallback: 기본 문법 규칙 적용
+  // 3. 사용 가능한 수어 단어만 필터링
+  // 4. 빈 결과 시 기본 단어 제공
+}
+
+### 키포인트 시각화 시스템
+javascript// OpenPose 키포인트 기반 3D 시각화
+- 25개 신체 키포인트 (포즈)
+- 21개 손 키포인트 × 2 (왼손, 오른손)  
+- 68개 얼굴 키포인트
+- 스켈레톤 + 메쉬 동시 렌더링
+- 실시간 프레임별 애니메이션 처리
 
 ## 🤝 기여하기
 
