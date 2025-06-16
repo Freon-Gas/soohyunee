@@ -1,248 +1,466 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
-import SignModel from './components/SignModel';
+import SignModel from './components/ImprovedKeypointSignModel';
 import ConversationHistory from './components/ConversationHistory';
+import KoreanSpeechRecognition from './utils/speechRecognition';
+import { convertToSignLanguageGrammar, simpleSignLanguageConversion } from './utils/signLanguageGrammar';
 
 function App() {
   const [text, setText] = useState('');
+  const [signGrammarText, setSignGrammarText] = useState('');
+  const [wordSequence, setWordSequence] = useState([]);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [currentWord, setCurrentWord] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState(null);
   
-  // References for audio recording
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const recordingTimeoutRef = useRef(null);
+  // References for speech recognition
+  const speechRecognitionRef = useRef(null);
+  const speechTimeoutRef = useRef(null);
+  const signModelRef = useRef(null); // Reference to SignModel component
+  const [interimText, setInterimText] = useState('');
+  const [recognitionSupported, setRecognitionSupported] = useState(true);
 
-  // Load saved conversations from localStorage
-  useEffect(() => {
-    const savedConversations = localStorage.getItem('signLanguageConversations');
-    if (savedConversations) {
-      try {
-        setConversations(JSON.parse(savedConversations));
-      } catch (error) {
-        console.error('대화 기록 로딩 오류:', error);
-      }
-    }
-  }, []);
+  // Processing control refs (최적화)
+  const processingTimeoutRef = useRef(null);
+  // FIXED: Remove lastProcessedTextRef to allow repeated words
+  // const lastProcessedTextRef = useRef(''); // Removed or not used for duplicate prevention
+  const isWordSequenceRunningRef = useRef(false);
 
-  // Save conversations to localStorage whenever they change
-  useEffect(() => {
-    if (conversations.length > 0) {
-      localStorage.setItem('signLanguageConversations', JSON.stringify(conversations));
-    }
-  }, [conversations]);
-
-  // Set up audio recording
-  const setupRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = async () => {
-        setIsProcessing(true);
-        
-        try {
-          // Create an audio blob from the recorded chunks
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          
-          // Reset audio chunks for next recording
-          audioChunksRef.current = [];
-          
-          // Send audio to backend Whisper API
-          const audioFormData = new FormData();
-          audioFormData.append('file', audioBlob, 'recording.webm');
-          
-          try {
-            // Make sure to use the correct CORS origin from your .env file
-            const response = await fetch('http://localhost:3001/api/whisper-transcribe', {
-              method: 'POST',
-              body: audioFormData,
-              // Add proper headers for CORS
-              headers: {
-                'Accept': 'application/json'
-              }
-            });
-            
-            if (!response.ok) {
-              throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.text) {
-              // Use the transcribed text from Whisper
-              handleSpeechResult(data.text);
-            } else {
-              setError('인식된 텍스트가 없습니다.');
-              setIsProcessing(false);
-            }
-          } catch (err) {
-            console.error('Error connecting to Whisper service:', err);
-            setError('음성 인식 서비스에 연결할 수 없습니다. 서버가 실행 중인지 확인하세요.');
-            setIsProcessing(false);
-          }
-        } catch (err) {
-          console.error('Error processing audio:', err);
-          setError('음성 처리 중 오류가 발생했습니다.');
-          setIsProcessing(false);
-        }
-      };
-      
-      mediaRecorderRef.current = mediaRecorder;
-      setError(null);
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-      setError('마이크 접근에 실패했습니다. 마이크 권한을 확인해주세요.');
-    }
-  };
-
-  // Toggle recording state
-  const toggleRecording = async () => {
-    if (isRecording) {
-      // Stop recording
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-      }
-      setIsRecording(false);
-      
-      if (recordingTimeoutRef.current) {
-        clearTimeout(recordingTimeoutRef.current);
-        recordingTimeoutRef.current = null;
-      }
-    } else {
-      // Start new recording
-      try {
-        await setupRecording();
-        if (mediaRecorderRef.current) {
-          audioChunksRef.current = [];
-          mediaRecorderRef.current.start();
-          setIsRecording(true);
-          setError(null);
-          
-          // Set a timeout to stop recording after 10 seconds
-          recordingTimeoutRef.current = setTimeout(() => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-              mediaRecorderRef.current.stop();
-            }
-          }, 10000); // 10 seconds
-        }
-      } catch (err) {
-        console.error('Error starting recording:', err);
-        setError('녹음 시작에 실패했습니다.');
-      }
-    }
-  };
-
-  const handleSpeechResult = (transcript) => {
-    setText(transcript);
-    processText(transcript);
+  // 최적화된 수어 단어 시퀀스 처리 - 콜백 방식
+  const processSignLanguageSequence = useCallback(async (sequence) => {
     
-    // Save to conversation history
-    saveToConversationHistory(transcript);
-  };
-
-  const handleTextInput = () => {
-    if (!inputText.trim()) return;
     
-    setText(inputText);
-    processText(inputText);
-    
-    // Save to conversation history
-    saveToConversationHistory(inputText);
-    
-    // Clear input field
-    setInputText('');
-  };
-
-  const saveToConversationHistory = (newText) => {
-    const now = new Date();
-    
-    // Create a new conversation or add to existing one
-    if (!currentConversationId || conversations.length === 0) {
-      // Create new conversation - use Korean date format
-      const newConversation = {
-        id: Date.now().toString(),
-        title: `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}.`,
-        phrases: [{ text: newText, timestamp: now }],
-        lastUpdated: now
-      };
-      
-      setConversations([newConversation, ...conversations]);
-      setCurrentConversationId(newConversation.id);
-    } else {
-      // Add to existing conversation
-      setConversations(conversations.map(convo => {
-        if (convo.id === currentConversationId) {
-          return {
-            ...convo,
-            phrases: [...convo.phrases, { text: newText, timestamp: now }],
-            lastUpdated: now
-          };
-        }
-        return convo;
-      }));
-    }
-  };
-
-  // Dynamic text processing function - works with any word
-  const processText = (text) => {
-    setIsProcessing(true);
-    
-    // For Korean text, we'll need to break down the text
-    const words = text.split(/\s+/);
-    
-    if (words.length === 0) {
-      setIsProcessing(false);
-      setError('처리할 텍스트가 없습니다.');
+    // 이미 실행 중이면 중단
+    if (isWordSequenceRunningRef.current) {
       return;
     }
     
-    // Use the first word by default
-    let wordToAnimate = words[0];
+    if (!sequence || sequence.length === 0) {
+      return;
+    }
     
-    console.log(`Processing word: "${wordToAnimate}"`);
+    isWordSequenceRunningRef.current = true;
+    setIsProcessing(true);
     
-    // Set the current word - the SignModel component will try to load
-    // keypoint data from the folder with this name
-    setTimeout(() => {
-      setCurrentWord(wordToAnimate);
+    try {
+      for (let i = 0; i < sequence.length; i++) {
+        // 중단 체크
+        if (!isWordSequenceRunningRef.current) {
+          break;
+        }
+        
+        const word = sequence[i];
+        
+        setCurrentWordIndex(i);
+        setCurrentWord(word);
+        
+        // 애니메이션 완료 대기
+        await waitForAnimationCompleteOrError();
+      }
+      
+    } catch (error) {
+    } finally {
       setIsProcessing(false);
-    }, 300);
-  };
+      isWordSequenceRunningRef.current = false;
+      processingTimeoutRef.current = null;
+    }
+  }, []);
 
-  const handleSelectConversation = (convoId, phraseText) => {
+  // 애니메이션 완료 대기 후 
+  const waitForAnimationCompleteOrError = useCallback(() => {
+    return new Promise((resolve) => {
+      const handleComplete = () => {
+        resolve();
+      };
+      
+      // 완료 콜백 임시 저장
+      processingTimeoutRef.current = handleComplete;
+    });
+  }, []);
+
+  // 애니메이션 완료 대기 후 
+  const waitForAnimationComplete = useCallback(() => {
+    return new Promise((resolve) => {
+      const handleComplete = () => {
+        resolve();
+      };
+      
+      // 완료 콜백을 임시로 저장
+      processingTimeoutRef.current = handleComplete;
+    });
+  }, []);
+
+  // SignModel에서 호출되는 콜백
+  const handleAnimationComplete = useCallback((completedWord) => {
+    if (processingTimeoutRef.current) {
+      processingTimeoutRef.current();
+      processingTimeoutRef.current = null;
+    }
+  }, []);
+
+  // 시퀀스 중단 함수
+  const stopWordSequence = useCallback(() => {
+    isWordSequenceRunningRef.current = false;
+    if (processingTimeoutRef.current) {
+      processingTimeoutRef.current();
+      processingTimeoutRef.current = null;
+    }
+    setIsProcessing(false);
+  }, []);
+
+  // Load saved conversations from localStorage
+  useEffect(() => {
+    try {
+      const savedConversations = localStorage.getItem('signLanguageConversations');
+      if (savedConversations) {
+        const parsedConversations = JSON.parse(savedConversations);
+        setConversations(parsedConversations);
+        
+        if (parsedConversations.length > 0) {
+          setCurrentConversationId(parsedConversations[0].id);
+        }
+      } else {
+      }
+    } catch (error) {
+      console.error('❌ 대화 기록 로딩 오류:', error);
+    }
+  }, []);
+
+  // Save conversations to localStorage whenever they change 
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (conversations.length > 0) {
+        localStorage.setItem('signLanguageConversations', JSON.stringify(conversations));
+      }
+    }, 500); // 500ms 디바운스
+
+    return () => clearTimeout(timeoutId);
+  }, [conversations]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    
+    const speechRecognition = new KoreanSpeechRecognition();
+    speechRecognitionRef.current = speechRecognition;
+    
+    const isSupported = speechRecognition.getIsSupported();
+    setRecognitionSupported(isSupported);
+    
+    if (!isSupported) {
+      console.error('❌ Speech recognition not supported in this browser');
+      setError('이 브라우저에서는 음성 인식을 지원하지 않습니다. Chrome 브라우저를 사용해주세요.');
+      return;
+    }
+    
+    // Set up callbacks
+    speechRecognition.onResult((result) => {
+      setInterimText(result.interim);
+      
+      if (result.final && result.final.trim()) {
+        handleSpeechResult(result.final.trim());
+        setInterimText('');
+      }
+    });
+    
+    speechRecognition.onError((errorMessage) => {
+      console.error('🎤 Speech recognition error:', errorMessage);
+      setError(errorMessage);
+      setIsRecording(false);
+      setIsProcessing(false);
+      setInterimText('');
+    });
+    
+    speechRecognition.onStart(() => {
+      setIsRecording(true);
+      setError(null);
+      setInterimText('');
+      
+      // 자동 정지 타이머 (15초)
+      speechTimeoutRef.current = setTimeout(() => {
+        speechRecognition.stop();
+      }, 15000);
+    });
+    
+    speechRecognition.onEnd(() => {
+      setIsRecording(false);
+      setInterimText('');
+      
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+        speechTimeoutRef.current = null;
+      }
+    });
+    
+    return () => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.abort();
+      }
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+      }
+      stopWordSequence(); // 컴포넌트 언마운트 시 시퀀스 중단
+    };
+  }, [stopWordSequence]);
+
+  // Toggle speech recognition
+  const toggleSpeechRecognition = useCallback(() => {
+    
+    if (!recognitionSupported) {
+      setError('이 브라우저에서는 음성 인식을 지원하지 않습니다. Chrome 브라우저를 사용해주세요.');
+      return;
+    }
+    
+    const speechRecognition = speechRecognitionRef.current;
+    if (!speechRecognition) {
+      setError('음성 인식이 초기화되지 않았습니다.');
+      return;
+    }
+    
+    if (isRecording) {
+      // Stop recognition
+      speechRecognition.stop();
+    } else {
+      // Clear any previous timeout
+      if (speechTimeoutRef.current) {
+        clearTimeout(speechTimeoutRef.current);
+        speechTimeoutRef.current = null;
+      }
+      
+      // Start recognition - DON'T call stopWordSequence here!
+      speechRecognition.start();
+    }
+  }, [recognitionSupported, isRecording]);
+
+  // FIXED: 최적화된 음성 결과 처리 - 중복 방지 제거
+  const handleSpeechResult = useCallback(async (transcript) => {
+    
+    // 이전 처리 중단
+    stopWordSequence();
+    
+    setText(transcript);
+    
+    // 수어 문법 변환 시작
+    setIsConverting(true);
+    let convertedSignGrammar = '';
+    
+    try {
+      const conversion = await convertToSignLanguageGrammar(transcript);
+      convertedSignGrammar = conversion.signGrammar;
+      setSignGrammarText(conversion.signGrammar);
+      setWordSequence(conversion.wordSequence);
+      
+      // 첫 번째 단어부터 애니메이션 시작
+      if (conversion.wordSequence.length > 0) {
+        setCurrentWordIndex(0);
+        processSignLanguageSequence(conversion.wordSequence);
+      } else {
+      }
+      
+    } catch (error) {
+      console.error('❌ Sign language conversion failed:', error);
+      // 변환 실패시 기본 처리
+      const fallback = simpleSignLanguageConversion(transcript);
+      convertedSignGrammar = fallback.signGrammar;
+      setSignGrammarText(fallback.signGrammar);
+      setWordSequence(fallback.wordSequence);
+      
+      if (fallback.wordSequence.length > 0) {
+        setCurrentWordIndex(0);
+        processSignLanguageSequence(fallback.wordSequence);
+      }
+    } finally {
+      setIsConverting(false);
+    }
+    
+    // Save to conversation history with the converted grammar
+    saveToConversationHistory(transcript, convertedSignGrammar);
+  }, [processSignLanguageSequence, stopWordSequence]);
+
+
+  const handleTextInput = useCallback(async () => {
+    if (!inputText.trim()) return;
+    
+    const textToProcess = inputText.trim();
+    
+    
+    // 이전 처리 중단
+    stopWordSequence();
+    
+    setText(textToProcess);
+    
+    // 수어 문법 변환
+    setIsConverting(true);
+    let convertedSignGrammar = '';
+    
+    try {
+      const conversion = await convertToSignLanguageGrammar(textToProcess);
+      
+      convertedSignGrammar = conversion.signGrammar;
+      setSignGrammarText(conversion.signGrammar);
+      setWordSequence(conversion.wordSequence);
+      
+      if (conversion.wordSequence.length > 0) {
+        setCurrentWordIndex(0);
+        processSignLanguageSequence(conversion.wordSequence);
+      }
+      
+    } catch (error) {
+      console.error('❌ Text conversion failed:', error);
+      const fallback = simpleSignLanguageConversion(textToProcess);
+      convertedSignGrammar = fallback.signGrammar;
+      setSignGrammarText(fallback.signGrammar);
+      setWordSequence(fallback.wordSequence);
+      
+      if (fallback.wordSequence.length > 0) {
+        setCurrentWordIndex(0);
+        processSignLanguageSequence(fallback.wordSequence);
+      }
+    } finally {
+      setIsConverting(false);
+    }
+    
+    // Save to conversation history with the converted grammar
+    saveToConversationHistory(textToProcess, convertedSignGrammar);
+    
+    // Clear input field
+    setInputText('');
+  }, [inputText, processSignLanguageSequence, stopWordSequence]);
+
+  // 최적화된 대화 기록 저장
+  const saveToConversationHistory = useCallback((originalText, signGrammarText = null) => {
+    const now = new Date();
+    
+    setConversations(prevConversations => {
+      
+      const existingConversation = currentConversationId ? 
+        prevConversations.find(convo => convo.id === currentConversationId) : null;
+      
+      if (existingConversation) {
+        return prevConversations.map(convo => {
+          if (convo.id === currentConversationId) {
+            const updatedConvo = {
+              ...convo,
+              phrases: [...convo.phrases, { 
+                text: originalText, 
+                signGrammar: signGrammarText,
+                timestamp: now 
+              }],
+              lastUpdated: now
+            };
+            return updatedConvo;
+          }
+          return convo;
+        });
+      } else {
+        const newConversation = {
+          id: Date.now().toString(),
+          title: `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}.`,
+          phrases: [{ 
+            text: originalText, 
+            signGrammar: signGrammarText,
+            timestamp: now 
+          }],
+          lastUpdated: now
+        };
+        
+        setCurrentConversationId(newConversation.id);
+        
+        return [newConversation, ...prevConversations];
+      }
+    });
+  }, [currentConversationId]);
+
+  const handleSelectConversation = useCallback(async (convoId, phraseText) => {
+    
+    // 이전 처리 중단
+    stopWordSequence();
+
     setText(phraseText);
-    processText(phraseText);
+    
+    // 수어 문법 변환으로 처리
+    setIsConverting(true);
+    try {
+      const conversion = await convertToSignLanguageGrammar(phraseText);
+      setSignGrammarText(conversion.signGrammar);
+      setWordSequence(conversion.wordSequence);
+      
+      if (conversion.wordSequence.length > 0) {
+        setCurrentWordIndex(0);
+        processSignLanguageSequence(conversion.wordSequence);
+      }
+    } catch (error) {
+      const fallback = simpleSignLanguageConversion(phraseText);
+      setSignGrammarText(fallback.signGrammar);
+      setWordSequence(fallback.wordSequence);
+      
+      if (fallback.wordSequence.length > 0) {
+        setCurrentWordIndex(0);
+        processSignLanguageSequence(fallback.wordSequence);
+      }
+    } finally {
+      setIsConverting(false);
+    }
+    
     setCurrentConversationId(convoId);
-  };
+  }, [processSignLanguageSequence, stopWordSequence]);
 
-  const handleDeleteConversation = (convoId) => {
+  const handleDeleteConversation = useCallback((convoId) => {
     setConversations(conversations.filter(convo => convo.id !== convoId));
     if (currentConversationId === convoId) {
       setCurrentConversationId(null);
     }
-  };
+  }, [conversations, currentConversationId]);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setShowSidebar(!showSidebar);
-  };
+  }, [showSidebar]);
 
-  const dismissError = () => {
+  const dismissError = useCallback(() => {
     setError(null);
-  };
+  }, []);
+
+  // Enter 키 처리 최적화
+  const handleKeyPress = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleTextInput();
+    }
+  }, [handleTextInput]);
+
+  // 홈페이지로 돌아가기 (idle 포즈)
+  const goToIdlePage = useCallback(() => {
+    
+    // 현재 애니메이션 중단
+    stopWordSequence();
+    
+    // SignModel 컴포넌트 리셋
+    if (signModelRef.current && signModelRef.current.resetToIdle) {
+      signModelRef.current.resetToIdle();
+    }
+    
+    // 모든 상태 초기화
+    setText('');
+    setSignGrammarText('');
+    setWordSequence([]);
+    setCurrentWordIndex(0);
+    setCurrentWord('');
+    setInputText('');
+    setIsProcessing(false);
+    setIsConverting(false);
+    
+    // 음성 인식이 실행 중이면 중단
+    if (isRecording && speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
+    
+  }, [stopWordSequence, isRecording]);
 
   return (
     <div className="app">
@@ -256,25 +474,71 @@ function App() {
           />
         </div>
         
-        {/* Sidebar toggle button - always attached to the sidebar */}
+        {/* Sidebar toggle button */}
         <div className="sidebar-toggle" onClick={toggleSidebar}>
           {showSidebar ? '◀' : '▶'}
         </div>
         
         <div className="main-content">
           <header className="app-header">
-            <h1>SOOHYUNEE</h1>
+            <h1 
+              onClick={goToIdlePage}
+              style={{ cursor: 'pointer' }}
+              title="클릭하여 메인 페이지로 돌아가기"
+            >
+              SOOHYUNEE
+            </h1>
           </header>
 
           <main className="app-main">            
             {/* 3D Model Visualization */}
             <div className="visualization-section">
-              <SignModel word={currentWord} />
+              <SignModel 
+                word={currentWord} 
+                onAnimationComplete={handleAnimationComplete}
+                onReset={signModelRef}
+              />
               
-              {/* Only show model info when there's a word being displayed */}
+              {/* Model info - 사이드바 위치에 따라 동적 이동 */}
               {currentWord && (
                 <div className="model-info">
-                  {`수화: ${currentWord}`}
+                  <div className="current-word">
+                    수어: {currentWord}
+                    {wordSequence.length > 0 && (
+                      <span className="word-progress">
+                        ({currentWordIndex + 1}/{wordSequence.length})
+                      </span>
+                    )}
+                  </div>
+                  {signGrammarText && text !== signGrammarText && (
+                    <div className="grammar-conversion">
+                      <div className="original-text">원문: {text}</div>
+                      <div className="sign-grammar">수어: {signGrammarText}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Show sign language conversion process */}
+              {isConverting && (
+                <div className="conversion-status">
+                  <div className="converting-indicator">
+                    수어 문법으로 변환 중...
+                  </div>
+                </div>
+              )}
+              
+              {/* Show interim speech recognition results */}
+              {(isRecording || interimText) && (
+                <div className="speech-interim">
+                  <div className="listening-indicator">
+                    {isRecording && !interimText && '듣고 있습니다...'}
+                  </div>
+                  {interimText && (
+                    <div className="interim-text">
+                      {interimText}
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -282,8 +546,8 @@ function App() {
               <div className="control-panel">
                 <button 
                   className={`speech-button ${isRecording ? 'active' : ''} ${isProcessing ? 'processing' : ''}`}
-                  onClick={toggleRecording}
-                  disabled={isProcessing}
+                  onClick={toggleSpeechRecognition}
+                  disabled={isProcessing || !recognitionSupported}
                 >
                   {isProcessing ? (
                     <div className="loading-spinner"></div>
@@ -307,16 +571,29 @@ function App() {
                     className="text-input"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
+                    onKeyPress={handleKeyPress}
                     placeholder="번역할 텍스트를 입력하세요..."
-                    onKeyPress={(e) => e.key === 'Enter' && handleTextInput()}
+                    disabled={isProcessing}
                   />
                   <button 
                     className="submit-button"
                     onClick={handleTextInput}
+                    disabled={isProcessing || !inputText.trim()}
                   >
                     →
                   </button>
                 </div>
+                
+                {/* Stop button for processing */}
+                {isProcessing && (
+                  <button 
+                    className="stop-button"
+                    onClick={stopWordSequence}
+                    title="애니메이션 중지"
+                  >
+                    ⏹
+                  </button>
+                )}
               </div>
               
               {/* Error message toast */}
@@ -326,13 +603,6 @@ function App() {
                   <button onClick={dismissError}>×</button>
                 </div>
               )}
-              
-              {/* Debug button */}
-              <button className="debug-button" onClick={() => {
-                window.debug_3d_model && window.debug_3d_model();
-              }}>
-                Debug
-              </button>
             </div>
           </main>
         </div>

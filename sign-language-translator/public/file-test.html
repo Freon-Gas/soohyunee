@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Access Test</title>
+</head>
+<body>
+    <h1>수어 파일 접근 테스트</h1>
+    <div id="results"></div>
+    
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        // 테스트할 파일들
+        const testFiles = [
+            '/data/signs/고민/NIA_SL_WORD0001_REAL09_F_000000000000_keypoints.json',
+            '/data/signs/사과/NIA_SL_WORD0099_REAL09_F_000000000000_keypoints.json',
+            '/data/signs/사과/NIA_SL_WORD1501_REAL01_F_000000000000_keypoints.json',
+            '/data/signs/가깝다/NIA_SL_WORD0940_REAL09_F_000000000000_keypoints.json'
+        ];
+        
+        async function testFileAccess() {
+            resultsDiv.innerHTML = '<h2>테스트 중...</h2>';
+            const results = [];
+            
+            for (const file of testFiles) {
+                try {
+                    console.log(`Testing: ${file}`);
+                    const response = await fetch(file);
+                    const status = response.status;
+                    const result = `${file}: ${status} ${status === 200 ? '✅' : '❌'}`;
+                    results.push(result);
+                    
+                    if (status === 200) {
+                        const data = await response.json();
+                        console.log(`Success loading: ${file}`, data);
+                    } else {
+                        console.log(`Failed loading: ${file}, status: ${status}`);
+                    }
+                } catch (error) {
+                    const result = `${file}: ERROR ❌ - ${error.message}`;
+                    results.push(result);
+                    console.error(`Error loading: ${file}`, error);
+                }
+            }
+            
+            resultsDiv.innerHTML = '<h2>테스트 결과:</h2><pre>' + results.join('\n') + '</pre>';
+        }
+        
+        // 페이지 로드 시 테스트 실행
+        testFileAccess();
+    </script>
+</body>
+</html>

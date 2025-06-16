@@ -1,70 +1,74 @@
-# Getting Started with Create React App
+# Korean Sign Language Translator
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+한국 수어를 3D로 시각화하는 실시간 번역기입니다. 음성 입력을 받아 한국어로 변환한 후, 해당하는 수어 동작을 3D 아바타로 표현합니다.
 
-## Available Scripts
+## 주요 기능
 
-In the project directory, you can run:
+- 🎤 **음성 인식**: Whisper API를 통한 정확한 음성-텍스트 변환
+- 🤖 **AI 문법 변환**: Google Gemini API를 활용한 수어 문법 최적화
+- 👤 **3D 수어 시각화**: Three.js 기반 실시간 3D 아바타 애니메이션
+- 📊 **키포인트 기반**: OpenPose 형식의 JSON 데이터를 활용한 정확한 동작 표현
 
-### `npm start`
+## 기술 스택
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Frontend**: React.js, Three.js
+- **Backend**: Node.js (Whisper API 연동)
+- **3D 렌더링**: Three.js + OpenPose 키포인트
+- **AI**: Google Gemini API, OpenAI Whisper
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 설치 및 실행
 
-### `npm test`
+### 1. 저장소 클론
+```bash
+git clone [repository-url]
+cd sign-language-translator
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 2. 의존성 설치
+```bash
+npm install
+```
 
-### `npm run build`
+### 3. 환경 변수 설정
+`.env.example` 파일을 `.env`로 복사하고 API 키를 설정하세요:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+cp .env.example .env
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+필요한 API 키:
+- `REACT_APP_GEMINI_API_KEY`: Google Gemini API 키
+- `REACT_APP_OPENAI_API_KEY`: OpenAI API 키 (선택사항)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 4. 개발 서버 실행
+```bash
+npm start
+```
 
-### `npm run eject`
+브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인하세요.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 프로젝트 구조
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```
+sign-language-translator/
+├── public/
+│   └── data/
+│       └── signs/          # 수어 동작 키포인트 데이터 (JSON)
+├── src/
+│   ├── components/         # React 컴포넌트
+│   ├── utils/             # 유틸리티 함수
+│   └── ...
+├── .env.example           # 환경 변수 템플릿
+└── generate-word-index.js # 단어 인덱스 생성 스크립트
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 사용법
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1. 마이크 버튼을 클릭하여 음성 입력 시작
+2. 한국어로 말하기
+3. AI가 수어 문법에 맞게 문장 변환
+4. 3D 아바타가 해당 수어 동작 수행
 
-## Learn More
+## 개발자 정보
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+캡스톤 프로젝트 - 한국 수어 번역 시스템

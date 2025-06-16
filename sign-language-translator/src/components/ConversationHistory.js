@@ -18,7 +18,7 @@ const ConversationHistory = ({ conversations, onSelectConversation, onDeleteConv
       
       {conversations.length === 0 ? (
         <div className="no-conversations">
-          <p>No conversations yet. Start speaking or typing to translate into sign language.</p>
+          <p>대화가 아직 없네요! 새 대화를 시작해보세요!</p>
         </div>
       ) : (
         <div className="conversations-list">
@@ -49,7 +49,14 @@ const ConversationHistory = ({ conversations, onSelectConversation, onDeleteConv
                       className="conversation-phrase"
                       onClick={() => onSelectConversation(convo.id, phrase.text)}
                     >
-                      {phrase.text}
+                      <div className="phrase-original">
+                        원문: {phrase.text}
+                      </div>
+                      {phrase.signGrammar && phrase.signGrammar !== phrase.text && (
+                        <div className="phrase-sign-grammar">
+                          수어: {phrase.signGrammar}
+                        </div>
+                      )}
                     </div>
                   ))}
                   <div className="conversation-actions">
